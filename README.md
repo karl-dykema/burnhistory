@@ -4,7 +4,7 @@
 
 Live demo → **[karl-dykema.github.io/burnhistory](https://karl-dykema.github.io/burnhistory/)**
 
-![BurnHistory screenshot — Havasu AZ at the 81st ERC percentile](screenshot.png)
+<img src="screenshot.png" alt="BurnHistory — Havasu AZ at the 81st ERC percentile" width="800">
 
 BurnHistory answers one question: *"Is today's fire weather unusual for this time of year at this station?"*
 

@@ -35,12 +35,20 @@
   }
 
   .station-bar {
-    padding: 12px 20px;
+    padding: 10px 20px;
     display: flex;
     align-items: center;
-    gap: 16px;
+    justify-content: space-between;
+    gap: 10px;
     flex-wrap: wrap;
     border-bottom: 1px solid #1e1e2e;
+  }
+
+  .station-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
   }
 
   .station-name {
@@ -54,32 +62,35 @@
     color: #888;
   }
 
-  .metric-pill {
-    background: #1e1e2e;
-    border: 1px solid #333;
-    border-radius: 20px;
-    padding: 4px 12px;
-    font-size: 0.75rem;
-    color: #ccc;
+  .station-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
   }
 
   #station-select, #fuel-model-select {
     background: #1e1e2e;
     border: 1px solid #444;
     border-radius: 6px;
-    padding: 4px 10px;
+    padding: 5px 10px;
     font-size: 0.75rem;
     color: #ccc;
     cursor: pointer;
     outline: none;
   }
 
-  #station-select {
-    margin-left: auto;
-  }
-
   #station-select:hover, #fuel-model-select:hover {
     border-color: #ff8c42;
+  }
+
+  @media (max-width: 600px) {
+    .station-controls {
+      width: 100%;
+    }
+    #station-select, #fuel-model-select {
+      flex: 1;
+    }
   }
 
   /* Hero readout */
@@ -189,15 +200,17 @@
 </header>
 
 <div class="station-bar">
-  <span class="station-name" id="station-name">—</span>
-  <span class="station-meta" id="station-meta">—</span>
-  <span class="metric-pill" id="metric-label">—</span>
-  <select id="station-select" title="Station">
-    <option value="havasu_az">Havasu, AZ</option>
-    <option value="humptullips_wa">Humptullips, WA</option>
-    <option value="chester_ca">Chester, CA</option>
-  </select>
-  <select id="fuel-model-select" title="NFDRS Fuel Model">
+  <div class="station-info">
+    <span class="station-name" id="station-name">—</span>
+    <span class="station-meta" id="station-meta">—</span>
+  </div>
+  <div class="station-controls">
+    <select id="station-select" title="Station">
+      <option value="havasu_az">Havasu, AZ</option>
+      <option value="humptullips_wa">Humptullips, WA</option>
+      <option value="chester_ca">Chester, CA</option>
+    </select>
+    <select id="fuel-model-select" title="NFDRS Fuel Model">
     <option value="A">A — Western Grasses (annual)</option>
     <option value="B">B — California Chaparral</option>
     <option value="C">C — Pine-Grass Savanna</option>
@@ -219,6 +232,7 @@
     <option value="T">T — Sagebrush-Grass</option>
     <option value="U">U — Western Pines</option>
   </select>
+  </div>
 </div>
 
 <div id="data-notice"></div>
@@ -316,7 +330,6 @@ function render(d) {
     `${station.name}, ${station.state}`;
   document.getElementById('station-meta').textContent =
     `ID: ${station.id}  ·  Baseline: ${baseline_years[0]}–${baseline_years[1]}`;
-  document.getElementById('metric-label').textContent = label;
   document.getElementById('legend-current-year').textContent =
     `${current_year.year}`;
 
