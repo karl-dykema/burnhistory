@@ -310,7 +310,7 @@
     <span>Median</span>
   </div>
   <div class="legend-item">
-    <div class="legend-line" style="background:#fff"></div>
+    <div class="legend-line" style="background:#22d3ee"></div>
     <span id="legend-current-year">Current year</span>
   </div>
 </div>
@@ -547,7 +547,7 @@ function drawChart(d) {
   recentYearKeys.forEach((yr, i) => {
     if (!visibleYears.has(yr)) return;
     const color = YEAR_COLORS[i % YEAR_COLORS.length];
-    drawLine(ctx, d.recent_years[yr], color, 1.5, xPos, yPos, N);
+    drawLine(ctx, d.recent_years[yr], color.replace(/[\d.]+\)$/, '0.55)'), 1, xPos, yPos, N);
   });
 
   // ── Current year line (solid where data exists, dashed gray across gaps)
@@ -695,7 +695,7 @@ function drawCurrentYearLine(ctx, values, todayIdx, xPos, yPos, N) {
 
   // Pass 2: solid white line through actual data points (up to today)
   ctx.beginPath();
-  ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+  ctx.strokeStyle = 'rgba(34,211,238,0.92)';
   ctx.lineWidth = 2;
   ctx.setLineDash([]);
   let penDown = false;
@@ -734,7 +734,7 @@ function niceYTicks(min, max, count) {
 }
 
 // Re-draw on resize
-window.addEventListener('resize', loadStation);
+window.addEventListener('resize', () => { if (currentData) drawChart(currentData); });
 </script>
 </body>
 </html>
