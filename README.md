@@ -4,8 +4,6 @@
 
 Live demo → **[karl-dykema.github.io/burnhistory](https://karl-dykema.github.io/burnhistory/)**
 
-![dark chart showing ERC percentile bands and current-year line]
-
 BurnHistory answers one question: *"Is today's fire weather unusual for this time of year at this station?"*
 
 It plots the current ERC against a 30-year percentile envelope — like a reservoir storage chart, but for fire danger. At a glance, a manager can see whether conditions are sitting at the 90th percentile for July at their station, or just a normal dry spell.
