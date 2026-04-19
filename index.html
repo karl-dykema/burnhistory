@@ -124,9 +124,39 @@
     margin-top: 2px;
   }
 
+  /* Year toggles */
+  .year-toggles {
+    padding: 10px 20px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .year-toggles-label {
+    font-size: 0.7rem;
+    color: #555;
+    white-space: nowrap;
+  }
+
+  .year-btn {
+    background: transparent;
+    border: 1px solid #333;
+    border-radius: 12px;
+    padding: 3px 10px;
+    font-size: 0.72rem;
+    color: #555;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s, background 0.15s;
+  }
+
+  .year-btn.active {
+    color: #fff;
+  }
+
   /* Chart */
   .chart-wrap {
-    padding: 16px 12px 0;
+    padding: 10px 12px 0;
     position: relative;
   }
 
@@ -252,6 +282,8 @@
   </div>
 </div>
 
+<div class="year-toggles" id="year-toggles"></div>
+
 <div class="chart-wrap">
   <canvas id="chart"></canvas>
 </div>
@@ -286,6 +318,17 @@
 <footer id="footer">Loading…</footer>
 
 <script>
+// ─── Year overlay state ──────────────────────────────────────────────────────
+const YEAR_COLORS = [
+  'rgba(160,130,255,0.8)',  // oldest
+  'rgba(80,200,160,0.8)',
+  'rgba(255,180,60,0.8)',
+  'rgba(255,100,130,0.8)',  // most recent prior year
+];
+
+let visibleYears = new Set();
+let currentData  = null;
+
 // ─── Load data ───────────────────────────────────────────────────────────────
 function loadStation() {
   const station = document.getElementById('station-select').value;
@@ -358,6 +401,42 @@ function render(d) {
     heroEl.textContent = '—';
     document.getElementById('hero-value').textContent = 'No data for today';
     document.getElementById('hero-context').textContent = '';
+  }
+
+  // Year toggle buttons
+  currentData = d;
+  visibleYears.clear();
+  const togglesEl = document.getElementById('year-toggles');
+  togglesEl.innerHTML = '';
+  const recentYears = Object.keys(d.recent_years || {}).sort();
+  if (recentYears.length) {
+    const lbl = document.createElement('span');
+    lbl.className = 'year-toggles-label';
+    lbl.textContent = 'Compare:';
+    togglesEl.appendChild(lbl);
+    recentYears.forEach((yr, i) => {
+      const color = YEAR_COLORS[i % YEAR_COLORS.length];
+      const btn = document.createElement('button');
+      btn.className = 'year-btn';
+      btn.textContent = yr;
+      btn.dataset.year = yr;
+      btn.style.setProperty('--yc', color);
+      btn.addEventListener('click', () => {
+        if (visibleYears.has(yr)) {
+          visibleYears.delete(yr);
+          btn.classList.remove('active');
+          btn.style.borderColor = '';
+          btn.style.background = '';
+        } else {
+          visibleYears.add(yr);
+          btn.classList.add('active');
+          btn.style.borderColor = color;
+          btn.style.background = color.replace(/[\d.]+\)$/, '0.15)');
+        }
+        drawChart(currentData);
+      });
+      togglesEl.appendChild(btn);
+    });
   }
 
   // Chart
@@ -462,6 +541,14 @@ function drawChart(d) {
 
   // ── Median line
   drawLine(ctx, p50, '#ffd166', 1.5, xPos, yPos, N);
+
+  // ── Prior year lines
+  const recentYearKeys = Object.keys(d.recent_years || {}).sort();
+  recentYearKeys.forEach((yr, i) => {
+    if (!visibleYears.has(yr)) return;
+    const color = YEAR_COLORS[i % YEAR_COLORS.length];
+    drawLine(ctx, d.recent_years[yr], color, 1.5, xPos, yPos, N);
+  });
 
   // ── Current year line (solid where data exists, dashed gray across gaps)
   drawCurrentYearLine(ctx, cy, d.today.index, xPos, yPos, N);
