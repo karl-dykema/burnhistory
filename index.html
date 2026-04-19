@@ -140,10 +140,17 @@
   .legend {
     display: flex;
     flex-wrap: wrap;
-    gap: 16px;
+    gap: 10px 16px;
     padding: 10px 20px 0;
     font-size: 0.72rem;
     color: #888;
+  }
+
+  @media (max-width: 600px) {
+    .legend {
+      gap: 8px 12px;
+      font-size: 0.68rem;
+    }
   }
 
   .legend-item {
@@ -376,7 +383,8 @@ function drawChart(d) {
   // Size canvas to container
   const wrap = canvas.parentElement;
   const W = wrap.clientWidth;
-  const H = Math.round(W * 0.32);  // shorter chart
+  const mobile = W < 600;
+  const H = Math.round(W * (mobile ? 0.56 : 0.32));
   canvas.width  = W * dpr;
   canvas.height = H * dpr;
   canvas.style.height = H + 'px';
@@ -384,7 +392,9 @@ function drawChart(d) {
   const ctx = canvas.getContext('2d');
   ctx.scale(dpr, dpr);
 
-  const PAD = { top: 20, right: 56, bottom: 36, left: 52 };
+  const PAD = mobile
+    ? { top: 14, right: 38, bottom: 26, left: 38 }
+    : { top: 20, right: 56, bottom: 36, left: 52 };
   const cW = W - PAD.left - PAD.right;
   const cH = H - PAD.top  - PAD.bottom;
 
@@ -490,22 +500,25 @@ function drawChart(d) {
   ctx.lineTo(PAD.left + cW, PAD.top + cH);
   ctx.stroke();
 
+  const fs = mobile ? 11 : 13;
+  const fsSmall = mobile ? 9 : 11;
+
   // Y-axis labels
   ctx.fillStyle = '#999';
-  ctx.font = `600 13px -apple-system,sans-serif`;
+  ctx.font = `600 ${fs}px -apple-system,sans-serif`;
   ctx.textAlign = 'right';
   ctx.textBaseline = 'middle';
   for (const t of yTicks) {
-    ctx.fillText(t, PAD.left - 8, yPos(t));
+    ctx.fillText(t, PAD.left - 6, yPos(t));
   }
 
   // Y-axis title "ERC"
   ctx.save();
   ctx.fillStyle = '#777';
-  ctx.font = `700 12px -apple-system,sans-serif`;
+  ctx.font = `700 ${fsSmall}px -apple-system,sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.translate(13, PAD.top + cH / 2);
+  ctx.translate(mobile ? 10 : 13, PAD.top + cH / 2);
   ctx.rotate(-Math.PI / 2);
   ctx.fillText('ERC', 0, 0);
   ctx.restore();
@@ -518,12 +531,11 @@ function drawChart(d) {
     { arr: p25, label: 'p25', color: 'rgba(120,180,255,0.8)' },
     { arr: p10, label: 'p10', color: 'rgba(80,140,255,0.8)' },
   ];
-  ctx.font = `600 11px -apple-system,sans-serif`;
+  ctx.font = `600 ${fsSmall}px -apple-system,sans-serif`;
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
-  const rightX = PAD.left + cW + 6;
+  const rightX = PAD.left + cW + 5;
   for (const { arr, label, color } of pctBands) {
-    // Use last non-null value for y position
     let lastVal = null;
     for (let i = N - 1; i >= 0; i--) {
       if (arr[i] !== null) { lastVal = arr[i]; break; }
@@ -536,7 +548,7 @@ function drawChart(d) {
 
   // X-axis month labels
   ctx.fillStyle = '#999';
-  ctx.font = `600 13px -apple-system,sans-serif`;
+  ctx.font = `600 ${fs}px -apple-system,sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
   for (let m = 0; m < monthStarts.length; m++) {
