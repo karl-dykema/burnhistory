@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BurnHistory — Fire Weather Climatology</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #0f1117;
+    color: #e8e8e8;
+    min-height: 100vh;
+  }
+
+  header {
+    padding: 16px 20px 12px;
+    border-bottom: 1px solid #2a2a3a;
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+  }
+
+  header h1 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #ff8c42;
+    letter-spacing: -0.02em;
+  }
+
+  header .subtitle {
+    font-size: 0.8rem;
+    color: #666;
+  }
+
+  .station-bar {
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    border-bottom: 1px solid #1e1e2e;
+  }
+
+  .station-name {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #fff;
+  }
+
+  .station-meta {
+    font-size: 0.75rem;
+    color: #888;
+  }
+
+  .metric-pill {
+    background: #1e1e2e;
+    border: 1px solid #333;
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 0.75rem;
+    color: #ccc;
+  }
+
+  #station-select, #fuel-model-select {
+    background: #1e1e2e;
+    border: 1px solid #444;
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 0.75rem;
+    color: #ccc;
+    cursor: pointer;
+    outline: none;
+  }
+
+  #station-select {
+    margin-left: auto;
+  }
+
+  #station-select:hover, #fuel-model-select:hover {
+    border-color: #ff8c42;
+  }
+
+  /* Hero readout */
+  .hero {
+    padding: 20px 20px 0;
+    display: flex;
+    align-items: flex-end;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+
+  .hero-pct {
+    font-size: 2.4rem;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.03em;
+  }
+
+  .hero-detail {
+    padding-bottom: 6px;
+  }
+
+  .hero-detail .value-line {
+    font-size: 1.1rem;
+    color: #ccc;
+  }
+
+  .hero-detail .context-line {
+    font-size: 0.8rem;
+    color: #777;
+    margin-top: 2px;
+  }
+
+  /* Chart */
+  .chart-wrap {
+    padding: 16px 12px 0;
+    position: relative;
+  }
+
+  canvas {
+    width: 100%;
+    display: block;
+    border-radius: 4px;
+  }
+
+  /* Legend */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    padding: 10px 20px 0;
+    font-size: 0.72rem;
+    color: #888;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .legend-swatch {
+    width: 24px;
+    height: 10px;
+    border-radius: 2px;
+  }
+
+  .legend-line {
+    width: 24px;
+    height: 2px;
+    border-radius: 1px;
+  }
+
+  /* Footer */
+  footer {
+    padding: 20px;
+    font-size: 0.7rem;
+    color: #444;
+    margin-top: 24px;
+    border-top: 1px solid #1e1e2e;
+  }
+
+  #data-notice {
+    display: none;
+    margin: 8px 20px 0;
+    padding: 6px 12px;
+    background: rgba(255, 200, 0, 0.08);
+    border: 1px solid rgba(255, 200, 0, 0.3);
+    border-radius: 6px;
+    font-size: 0.75rem;
+    color: #ffd166;
+  }
+
+  /* Percentile color scale for hero */
+  .pct-extreme  { color: #ff3b3b; }
+  .pct-high     { color: #ff8c42; }
+  .pct-moderate { color: #ffd166; }
+  .pct-normal   { color: #a8d8a8; }
+  .pct-low      { color: #6ec6e6; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>BurnHistory</h1>
+  <span class="subtitle">Fire weather vs. historical climatology</span>
+</header>
+
+<div class="station-bar">
+  <span class="station-name" id="station-name">—</span>
+  <span class="station-meta" id="station-meta">—</span>
+  <span class="metric-pill" id="metric-label">—</span>
+  <select id="station-select" title="Station">
+    <option value="havasu_az">Havasu, AZ</option>
+    <option value="humptullips_wa">Humptullips, WA</option>
+    <option value="chester_ca">Chester, CA</option>
+  </select>
+  <select id="fuel-model-select" title="NFDRS Fuel Model">
+    <option value="A">A — Western Grasses (annual)</option>
+    <option value="B">B — California Chaparral</option>
+    <option value="C">C — Pine-Grass Savanna</option>
+    <option value="D">D — Southern Rough</option>
+    <option value="E">E — Hardwood Litter (winter)</option>
+    <option value="F">F — Intermediate Brush</option>
+    <option value="G" selected>G — Short Needle / Heavy Dead</option>
+    <option value="H">H — Short Needle / Normal Dead</option>
+    <option value="I">I — Heavy Slash</option>
+    <option value="J">J — Intermediate Slash</option>
+    <option value="K">K — Light Slash</option>
+    <option value="L">L — Western Grasses (perennial)</option>
+    <option value="N">N — Sawgrass</option>
+    <option value="O">O — High Pocosin</option>
+    <option value="P">P — Southern Pine Plantation</option>
+    <option value="Q">Q — Alaskan Black Spruce</option>
+    <option value="R">R — Hardwood Litter (summer)</option>
+    <option value="S">S — Tundra</option>
+    <option value="T">T — Sagebrush-Grass</option>
+    <option value="U">U — Western Pines</option>
+  </select>
+</div>
+
+<div id="data-notice"></div>
+
+<div class="hero">
+  <div class="hero-pct" id="hero-pct">—</div>
+  <div class="hero-detail">
+    <div class="value-line" id="hero-value">—</div>
+    <div class="context-line" id="hero-context">—</div>
+  </div>
+</div>
+
+<div class="chart-wrap">
+  <canvas id="chart"></canvas>
+</div>
+
+<div class="legend">
+  <div class="legend-item">
+    <div class="legend-swatch" style="background:rgba(255,60,60,0.18)"></div>
+    <span>Above normal (75–90th)</span>
+  </div>
+  <div class="legend-item">
+    <div class="legend-swatch" style="background:rgba(255,140,66,0.22)"></div>
+    <span>Near normal high (50–75th)</span>
+  </div>
+  <div class="legend-item">
+    <div class="legend-swatch" style="background:rgba(120,180,255,0.14)"></div>
+    <span>Near normal low (25–50th)</span>
+  </div>
+  <div class="legend-item">
+    <div class="legend-swatch" style="background:rgba(100,160,255,0.18)"></div>
+    <span>Below normal (10–25th)</span>
+  </div>
+  <div class="legend-item">
+    <div class="legend-line" style="background:#ffd166"></div>
+    <span>Median</span>
+  </div>
+  <div class="legend-item">
+    <div class="legend-line" style="background:#fff"></div>
+    <span id="legend-current-year">Current year</span>
+  </div>
+</div>
+
+<footer id="footer">Loading…</footer>
+
+<script>
+// ─── Load data ───────────────────────────────────────────────────────────────
+function loadStation() {
+  const station = document.getElementById('station-select').value;
+  const model   = document.getElementById('fuel-model-select').value;
+  loadData(station, model);
+}
+
+function loadModel(fuelModel) {
+  const station = document.getElementById('station-select').value;
+  loadData(station, fuelModel);
+}
+
+function loadData(station, fuelModel) {
+  fetch(`data/stations/${station}/erc_${fuelModel}.json`)
+    .then(r => {
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.json();
+    })
+    .then(data => render(data))
+    .catch(e => {
+      document.getElementById('footer').textContent =
+        `No data available for this station / fuel model combination. (${e.message})`;
+    });
+}
+
+document.getElementById('station-select')
+  .addEventListener('change', loadStation);
+document.getElementById('fuel-model-select')
+  .addEventListener('change', e => loadModel(e.target.value));
+
+loadStation();
+
+// ─── Render ──────────────────────────────────────────────────────────────────
+function render(d) {
+  const { station, label, units, baseline_years, today, percentiles, current_year, data_quality } = d;
+
+  // Data quality notice
+  const noticeEl = document.getElementById('data-notice');
+  if (data_quality && !data_quality.sufficient) {
+    noticeEl.textContent =
+      `⚠ Incomplete record: ${data_quality.years_with_data} of ${baseline_years[1] - baseline_years[0] + 1} years available — percentile bands may be unreliable.`;
+    noticeEl.style.display = 'block';
+  } else {
+    noticeEl.style.display = 'none';
+  }
+
+  // Station bar
+  document.getElementById('station-name').textContent =
+    `${station.name}, ${station.state}`;
+  document.getElementById('station-meta').textContent =
+    `ID: ${station.id}  ·  Baseline: ${baseline_years[0]}–${baseline_years[1]}`;
+  document.getElementById('metric-label').textContent = label;
+  document.getElementById('legend-current-year').textContent =
+    `${current_year.year}`;
+
+  // Hero readout
+  const pct = today.percentile;
+  const val = today.value;
+  const heroEl = document.getElementById('hero-pct');
+
+  if (pct !== null && pct !== undefined) {
+    const suffix = [11,12,13].includes(pct % 100) ? 'th'
+      : ['st','nd','rd'][(pct % 10) - 1] || 'th';
+    heroEl.textContent = `${pct}${suffix} percentile`;
+    heroEl.className = 'hero-pct ' + pctClass(pct);
+    document.getElementById('hero-value').textContent =
+      units ? `ERC ${val} ${units}` : `ERC ${val}`;
+    document.getElementById('hero-context').textContent =
+      `${pct >= 50 ? 'Higher' : 'Lower'} than ${pct}% of ${baseline_years[0]}–${baseline_years[1]} for this date`;
+  } else {
+    heroEl.textContent = '—';
+    document.getElementById('hero-value').textContent = 'No data for today';
+    document.getElementById('hero-context').textContent = '';
+  }
+
+  // Chart
+  drawChart(d);
+
+  document.getElementById('footer').textContent =
+    `Source: WRCC RAWS archive · Percentiles computed from ${baseline_years[0]}–${baseline_years[1]} daily observations · 7-day smoothing window`;
+}
+
+function pctClass(p) {
+  if (p >= 90) return 'pct-extreme';
+  if (p >= 75) return 'pct-high';
+  if (p >= 40) return 'pct-moderate';
+  if (p >= 20) return 'pct-normal';
+  return 'pct-low';
+}
+
+// ─── Chart drawing ───────────────────────────────────────────────────────────
+function drawChart(d) {
+  const canvas = document.getElementById('chart');
+  const dpr = window.devicePixelRatio || 1;
+
+  // Size canvas to container
+  const wrap = canvas.parentElement;
+  const W = wrap.clientWidth;
+  const H = Math.round(W * 0.32);  // shorter chart
+  canvas.width  = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.height = H + 'px';
+
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const PAD = { top: 20, right: 56, bottom: 36, left: 52 };
+  const cW = W - PAD.left - PAD.right;
+  const cH = H - PAD.top  - PAD.bottom;
+
+  // Data
+  const p10 = d.percentiles['10'];
+  const p25 = d.percentiles['25'];
+  const p50 = d.percentiles['50'];
+  const p75 = d.percentiles['75'];
+  const p90 = d.percentiles['90'];
+  const cy  = d.current_year.values;
+  const N   = 365;
+
+  // Y range: p10 min to p90 max with padding
+  const allVals = [...p10, ...p90].filter(v => v !== null);
+  let yMin = Math.min(...allVals);
+  let yMax = Math.max(...allVals);
+  const yPad = (yMax - yMin) * 0.08;
+  yMin -= yPad;
+  yMax += yPad;
+
+  function xPos(i) { return PAD.left + (i / (N - 1)) * cW; }
+  function yPos(v) { return PAD.top + cH - ((v - yMin) / (yMax - yMin)) * cH; }
+
+  // ── Background
+  ctx.fillStyle = '#141420';
+  ctx.fillRect(0, 0, W, H);
+
+  // ── Grid lines
+  ctx.strokeStyle = '#222233';
+  ctx.lineWidth = 1;
+  const yTicks = niceYTicks(yMin, yMax, 5);
+  for (const t of yTicks) {
+    const y = yPos(t);
+    ctx.beginPath();
+    ctx.moveTo(PAD.left, y);
+    ctx.lineTo(PAD.left + cW, y);
+    ctx.stroke();
+  }
+
+  // Month separators
+  const monthStarts = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
+  const monthLabels = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  ctx.strokeStyle = '#1e1e2e';
+  ctx.lineWidth = 1;
+  for (let m = 1; m < monthStarts.length; m++) {
+    const x = xPos(monthStarts[m]);
+    ctx.beginPath();
+    ctx.moveTo(x, PAD.top);
+    ctx.lineTo(x, PAD.top + cH);
+    ctx.stroke();
+  }
+
+  // ── Shaded bands (drawn bottom to top so upper bands layer correctly)
+  // p75–p90 (hot red)
+  fillBand(ctx, p75, p90, 'rgba(255,60,60,0.22)', xPos, yPos, N);
+  // p50–p75 (warm orange)
+  fillBand(ctx, p50, p75, 'rgba(255,140,66,0.26)', xPos, yPos, N);
+  // p25–p50 (cool blue)
+  fillBand(ctx, p25, p50, 'rgba(120,180,255,0.18)', xPos, yPos, N);
+  // p10–p25 (cold blue)
+  fillBand(ctx, p10, p25, 'rgba(80,140,255,0.22)', xPos, yPos, N);
+
+  // ── Median line
+  drawLine(ctx, p50, '#ffd166', 1.5, xPos, yPos, N);
+
+  // ── Current year line (solid where data exists, dashed gray across gaps)
+  drawCurrentYearLine(ctx, cy, d.today.index, xPos, yPos, N);
+
+  // ── Today marker
+  const ti = d.today.index;
+  const tv = d.today.value;
+  if (tv !== null && tv !== undefined) {
+    const tx = xPos(ti);
+    const ty = yPos(tv);
+
+    // Vertical dashed line
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(tx, PAD.top);
+    ctx.lineTo(tx, PAD.top + cH);
+    ctx.stroke();
+    ctx.restore();
+
+    // Dot
+    ctx.beginPath();
+    ctx.arc(tx, ty, 5, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff';
+    ctx.fill();
+    ctx.strokeStyle = '#ff8c42';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+
+  // ── Axes
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(PAD.left, PAD.top);
+  ctx.lineTo(PAD.left, PAD.top + cH);
+  ctx.lineTo(PAD.left + cW, PAD.top + cH);
+  ctx.stroke();
+
+  // Y-axis labels
+  ctx.fillStyle = '#999';
+  ctx.font = `600 13px -apple-system,sans-serif`;
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  for (const t of yTicks) {
+    ctx.fillText(t, PAD.left - 8, yPos(t));
+  }
+
+  // Y-axis title "ERC"
+  ctx.save();
+  ctx.fillStyle = '#777';
+  ctx.font = `700 12px -apple-system,sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.translate(13, PAD.top + cH / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.fillText('ERC', 0, 0);
+  ctx.restore();
+
+  // Percentile labels on right edge
+  const pctBands = [
+    { arr: p90, label: 'p90', color: 'rgba(255,100,80,0.8)' },
+    { arr: p75, label: 'p75', color: 'rgba(255,160,80,0.8)' },
+    { arr: p50, label: 'p50', color: 'rgba(255,210,100,0.9)' },
+    { arr: p25, label: 'p25', color: 'rgba(120,180,255,0.8)' },
+    { arr: p10, label: 'p10', color: 'rgba(80,140,255,0.8)' },
+  ];
+  ctx.font = `600 11px -apple-system,sans-serif`;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  const rightX = PAD.left + cW + 6;
+  for (const { arr, label, color } of pctBands) {
+    // Use last non-null value for y position
+    let lastVal = null;
+    for (let i = N - 1; i >= 0; i--) {
+      if (arr[i] !== null) { lastVal = arr[i]; break; }
+    }
+    if (lastVal !== null) {
+      ctx.fillStyle = color;
+      ctx.fillText(label, rightX, yPos(lastVal));
+    }
+  }
+
+  // X-axis month labels
+  ctx.fillStyle = '#999';
+  ctx.font = `600 13px -apple-system,sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  for (let m = 0; m < monthStarts.length; m++) {
+    const x = xPos(monthStarts[m] + 15);
+    ctx.fillText(monthLabels[m], x, PAD.top + cH + 8);
+  }
+}
+
+function fillBand(ctx, lower, upper, color, xPos, yPos, N) {
+  ctx.beginPath();
+  let started = false;
+  for (let i = 0; i < N; i++) {
+    if (upper[i] === null || lower[i] === null) { started = false; continue; }
+    if (!started) { ctx.moveTo(xPos(i), yPos(upper[i])); started = true; }
+    else ctx.lineTo(xPos(i), yPos(upper[i]));
+  }
+  for (let i = N - 1; i >= 0; i--) {
+    if (lower[i] === null || upper[i] === null) continue;
+    ctx.lineTo(xPos(i), yPos(lower[i]));
+  }
+  ctx.closePath();
+  ctx.fillStyle = color;
+  ctx.fill();
+}
+
+function drawCurrentYearLine(ctx, values, todayIdx, xPos, yPos, N) {
+  // Draw solid white line through observed data, bridging short gaps with dashed gray
+  const limit = todayIdx + 1; // only draw through today
+
+  // Pass 1: dashed gray bridges across null gaps (up to today)
+  ctx.save();
+  ctx.strokeStyle = 'rgba(180,180,180,0.4)';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([3, 5]);
+  let lastGoodX = null, lastGoodY = null;
+  for (let i = 0; i < limit; i++) {
+    const v = values[i];
+    if (v !== null && v !== undefined) {
+      if (lastGoodX !== null) {
+        // Only bridge gaps (not consecutive points)
+        let prevHasVal = i > 0 && values[i-1] !== null && values[i-1] !== undefined;
+        if (!prevHasVal) {
+          ctx.beginPath();
+          ctx.moveTo(lastGoodX, lastGoodY);
+          ctx.lineTo(xPos(i), yPos(v));
+          ctx.stroke();
+        }
+      }
+      lastGoodX = xPos(i);
+      lastGoodY = yPos(v);
+    }
+  }
+  ctx.restore();
+
+  // Pass 2: solid white line through actual data points (up to today)
+  ctx.beginPath();
+  ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([]);
+  let penDown = false;
+  for (let i = 0; i < limit; i++) {
+    const v = values[i];
+    if (v === null || v === undefined) { penDown = false; continue; }
+    if (!penDown) { ctx.moveTo(xPos(i), yPos(v)); penDown = true; }
+    else ctx.lineTo(xPos(i), yPos(v));
+  }
+  ctx.stroke();
+}
+
+function drawLine(ctx, values, color, width, xPos, yPos, N) {
+  ctx.beginPath();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  let penDown = false;
+  for (let i = 0; i < N; i++) {
+    const v = values[i];
+    if (v === null || v === undefined) { penDown = false; continue; }
+    if (!penDown) { ctx.moveTo(xPos(i), yPos(v)); penDown = true; }
+    else ctx.lineTo(xPos(i), yPos(v));
+  }
+  ctx.stroke();
+}
+
+function niceYTicks(min, max, count) {
+  const range = max - min;
+  const step = Math.pow(10, Math.floor(Math.log10(range / count)));
+  const nice = [1, 2, 5, 10].map(s => s * step)
+    .find(s => range / s <= count * 1.5) || step;
+  const start = Math.ceil(min / nice) * nice;
+  const ticks = [];
+  for (let t = start; t <= max; t += nice) ticks.push(Math.round(t));
+  return ticks;
+}
+
+// Re-draw on resize
+window.addEventListener('resize', loadStation);
+</script>
+</body>
+</html>
