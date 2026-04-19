@@ -363,8 +363,11 @@ function render(d) {
   // Chart
   drawChart(d);
 
+  const dataDate = new Date(current_year.year, 0, 1);
+  dataDate.setDate(today.doy);
+  const dateStr = dataDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
   document.getElementById('footer').textContent =
-    `Source: WRCC RAWS archive · Percentiles computed from ${baseline_years[0]}–${baseline_years[1]} daily observations · 7-day smoothing window`;
+    `Data through ${dateStr} · Source: WRCC RAWS archive · Percentiles computed from ${baseline_years[0]}–${baseline_years[1]} daily observations · 7-day smoothing window`;
 }
 
 function pctClass(p) {

@@ -1,4 +1,5 @@
 .DS_Store
 data/raw/
+data/stations/*.json
 scripts/__pycache__/
 *.pyc
